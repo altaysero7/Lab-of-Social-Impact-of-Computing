@@ -1,6 +1,6 @@
 # Sustainable Image Optimization with CDN & Browser Extension
 
-A system that detects and optimizes unnecessarily heavy images by redirecting them through a CDN server, converting them to lighter formats like WebP, and providing real-time impact visualization. The project consists of a browser extension, a CDN server, and a dashboard to track the environmental and performance benefits.
+A system that detects and optimizes unnecessarily heavy images by redirecting them through a CDN server, converting them to lighter formats like WebP, and providing real-time impact visualization. The project consists of a browser extension, a CDN server, and a dashboard to track the environmental and performance benefits. This project is done for a course named Lab-of-Social-Impact-of-Computing in Trento university, Italy.
 
 ## 🌍 Project Overview
 
