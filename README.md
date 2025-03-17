@@ -66,8 +66,3 @@ cd sustainable-image-optimization/cdn-server
 * Energy saved (in Joules)
 
 * Equivalent sustainability impact (e.g., LED bulb runtime, smartphone charges)
-
-
-📜 License
-
-This project is licensed under the MIT License – see the LICENSE file for details.
