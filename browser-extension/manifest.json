@@ -1,0 +1,24 @@
+{
+    "manifest_version": 3,
+    "name": "Image CDN Redirector",
+    "version": "1.0",
+    "description": "Redirects image requests to a CDN server that converts images to lighter formats.",
+    "permissions": [
+        "declarativeNetRequest"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "declarative_net_request": {
+        "rule_resources": [
+            {
+                "id": "ruleset_1",
+                "enabled": true,
+                "path": "rules.json"
+            }
+        ]
+    },
+    "background": {
+        "service_worker": "background.js"
+    }
+}
