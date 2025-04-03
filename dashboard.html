@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>CDN Impact Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 5px;
+        }
+
+        .subheader {
+            font-size: 1.1em;
+            color: #666;
+        }
+
+        .group {
+            margin-bottom: 30px;
+        }
+
+        .group h2 {
+            text-align: center;
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+
+        .card-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            flex: 1 1 250px;
+            max-width: 300px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .card h3 {
+            margin: 0;
+            font-size: 1.2em;
+            color: #555;
+            display: flex;
+            align-items: center;
+        }
+
+        .card p {
+            margin: 10px 0 0;
+            font-size: 1.8em;
+            font-weight: 500;
+            color: #222;
+        }
+
+        .info-icon {
+            margin-left: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            color: #888;
+            position: relative;
+        }
+
+        .info-icon:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            white-space: nowrap;
+            z-index: 10;
+            font-size: 0.8em;
+            pointer-events: none;
+        }
+
+        .chart-container {
+            background: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            margin-top: 30px;
+            max-width: 1000px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        #sliderContainer {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        #rangeInfo {
+            font-size: 0.9em;
+            color: #555;
+            margin-left: 10px;
+        }
+
+        #autoScrollContainer {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        /* New group for conversion statistics */
+        .conversion-group {
+            margin-bottom: 30px;
+        }
+
+        .conversion-group h2 {
+            text-align: center;
+            color: #007bff;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .card-container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>CDN Impact Dashboard</h1>
+        <div class="subheader">Real-time performance & sustainability metrics</div>
+    </header>
+
+    <!-- Group 1: Conversion Statistics -->
+    <div class="conversion-group">
+        <h2>Conversion Statistics</h2>
+        <div class="card-container">
+            <div class="card">
+                <h3>
+                    Total Images
+                    <span class="info-icon"
+                        data-tooltip="Total number of images processed (converted + not converted).">ℹ️</span>
+                </h3>
+                <p id="totalImages">0</p>
+            </div>
+            <div class="card">
+                <h3>
+                    Images Converted (WebP)
+                    <span class="info-icon" data-tooltip="Number of images successfully converted to WebP.">ℹ️</span>
+                </h3>
+                <p id="imagesConverted">0</p>
+            </div>
+            <div class="card">
+                <h3>
+                    Images Not Converted (Original)
+                    <span class="info-icon" data-tooltip="Number of images served in original format.">ℹ️</span>
+                </h3>
+                <p id="imagesOriginal">0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group 2: Data Throughput -->
+    <div class="group">
+        <h2>Data Throughput</h2>
+        <div class="card-container">
+            <div class="card">
+                <h3>
+                    Total Original Bytes
+                    <span class="info-icon" data-tooltip="Total bytes of all fetched original images.">ℹ️</span>
+                </h3>
+                <p id="totalOriginal">0</p>
+            </div>
+            <div class="card">
+                <h3>
+                    Total Converted Bytes
+                    <span class="info-icon" data-tooltip="Total bytes after conversion to WebP format.">ℹ️</span>
+                </h3>
+                <p id="totalConverted">0</p>
+            </div>
+            <div class="card">
+                <h3>
+                    Bytes Saved
+                    <span class="info-icon" data-tooltip="Difference between original and converted bytes.">ℹ️</span>
+                </h3>
+                <p id="bytesSaved">0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group 3: Energy Impact -->
+    <div class="group">
+        <h2>Energy Impact</h2>
+        <div class="card-container">
+            <div class="card">
+                <h3>
+                    Energy Saved
+                    <span class="info-icon" data-tooltip="Estimated energy saved in Joules (raw value).">ℹ️</span>
+                </h3>
+                <p id="energySaved">0</p>
+            </div>
+            <div class="card">
+                <h3>
+                    LED Bulb Equivalent
+                    <span class="info-icon" data-tooltip="Equivalent runtime for a 10W LED (~36,000 J/hr).">ℹ️</span>
+                </h3>
+                <p id="ledEquivalent">-</p>
+            </div>
+            <div class="card">
+                <h3>
+                    Smartphone Charges
+                    <span class="info-icon"
+                        data-tooltip="Equivalent full smartphone charges (~11 Wh per charge, ~39,600 J).">ℹ️</span>
+                </h3>
+                <p id="smartphoneEquivalent">-</p>
+            </div>
+            <div class="card">
+                <h3>
+                    Laptop Runtime
+                    <span class="info-icon"
+                        data-tooltip="Equivalent runtime for a 50W laptop (~180,000 J/hr).">ℹ️</span>
+                </h3>
+                <p id="laptopEquivalent">-</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group 4: Performance -->
+    <div class="group">
+        <h2>Performance</h2>
+        <div class="card-container">
+            <div class="card">
+                <h3>
+                    Time Saved
+                    <span class="info-icon" data-tooltip="Estimated time saved in data transfer (seconds).">ℹ️</span>
+                </h3>
+                <p id="timeSaved">0</p>
+            </div>
+            <div class="card">
+                <h3>
+                    Conversion Rate
+                    <span class="info-icon"
+                        data-tooltip="Percentage reduction from original to converted bytes.">ℹ️</span>
+                </h3>
+                <p id="conversionRate">0</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="impactChart" width="800" height="400"></canvas>
+    </div>
+
+    <div id="sliderContainer">
+        <label for="chartRange">View Data Range: </label>
+        <input type="range" id="chartRange" min="0" max="0" value="0" step="1" style="width:300px;">
+        <span id="rangeInfo">No data yet</span>
+    </div>
+
+    <div id="autoScrollContainer">
+        <label>
+            <input type="checkbox" id="autoScroll" checked>
+            Auto Scroll to Latest Data
+        </label>
+    </div>
+
+    <!-- References Section -->
+    <div class="references">
+        <h2>References & Sources</h2>
+        <ul>
+            <li>
+                Energy consumption per byte: Baliga et al. (2011), <em>Green Cloud Computing: Balancing Energy in
+                    Processing, Storage, and Transport</em>,
+                Proceedings of the IEEE, vol. 99, no. 1, pp. 149–167, DOI: <a
+                    href="https://doi.org/10.1109/JPROC.2011.2100192" target="_blank">10.1109/JPROC.2011.2100192</a>
+                (Table II, pp. 156–157).
+            </li>
+            <li>
+                Network throughput assumption: Average download speeds of ~10 Mbps (~1.25e6 bytes/sec) as reported by
+                <a href="https://www.speedtest.net/about" target="_blank">Speedtest.net</a>.
+            </li>
+        </ul>
+    </div>
+
+    <script>
+        // Helper functions to format numbers.
+        function formatBytes(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            let i = 0;
+            while (bytes >= 1024 && i < units.length - 1) {
+                bytes /= 1024;
+                i++;
+            }
+            return bytes.toFixed(2) + ' ' + units[i];
+        }
+
+        function formatJoules(joules) {
+            if (joules < 1000) return joules.toFixed(2) + ' J';
+            const units = ['J', 'kJ', 'MJ', 'GJ'];
+            let i = 0;
+            while (joules >= 1000 && i < units.length - 1) {
+                joules /= 1000;
+                i++;
+            }
+            return joules.toFixed(2) + ' ' + units[i];
+        }
+
+        function formatTime(seconds) {
+            if (seconds < 60) return seconds.toFixed(2) + ' sec';
+            const minutes = Math.floor(seconds / 60);
+            seconds %= 60;
+            if (minutes < 60) return minutes + ' min ' + seconds.toFixed(2) + ' sec';
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return hours + ' h ' + mins + ' min ' + seconds.toFixed(2) + ' sec';
+        }
+
+        // Chart configuration.
+        const ctx = document.getElementById('impactChart').getContext('2d');
+        const windowSize = 20;
+        const chartData = {
+            labels: [],
+            datasets: [
+                {
+                    label: 'Total Original Bytes',
+                    data: [],
+                    borderColor: '#007bff',
+                    backgroundColor: 'rgba(0,123,255,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                },
+                {
+                    label: 'Total Converted Bytes',
+                    data: [],
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40,167,69,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                },
+                {
+                    label: 'Bytes Saved',
+                    data: [],
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220,53,69,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                }
+            ]
+        };
+
+        const impactChart = new Chart(ctx, {
+            type: 'line',
+            data: chartData,
+            options: {
+                responsive: true,
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: { title: { display: true, text: 'Time' }, ticks: { color: '#333' } },
+                    y: { title: { display: true, text: 'Bytes' }, ticks: { color: '#333' } }
+                },
+                plugins: { legend: { labels: { color: '#333' } } }
+            }
+        });
+
+        // Full data storage.
+        const fullLabels = [];
+        const fullDataOriginal = [];
+        const fullDataConverted = [];
+        const fullDataSaved = [];
+
+        let latestStats = null;
+        let updateScheduled = false;
+        function updateDashboard() {
+            if (!latestStats) return;
+            const now = new Date().toLocaleTimeString();
+            fullLabels.push(now);
+            fullDataOriginal.push(latestStats.totalOriginalBytes);
+            fullDataConverted.push(latestStats.totalConvertedBytes);
+            fullDataSaved.push(latestStats.bytesSaved);
+
+            // Update slider maximum.
+            const slider = document.getElementById('chartRange');
+            slider.max = Math.max(0, fullLabels.length - windowSize);
+
+            // If auto-scroll is enabled, move slider to the maximum.
+            const autoScroll = document.getElementById('autoScroll').checked;
+            if (autoScroll) {
+                slider.value = slider.max;
+                updateChart(parseInt(slider.value));
+            }
+
+            // Update card texts with formatted values.
+            document.getElementById('totalOriginal').textContent = formatBytes(latestStats.totalOriginalBytes);
+            document.getElementById('totalConverted').textContent = formatBytes(latestStats.totalConvertedBytes);
+            document.getElementById('bytesSaved').textContent = formatBytes(latestStats.bytesSaved);
+            document.getElementById('energySaved').textContent = formatJoules(latestStats.energySaved);
+            document.getElementById('timeSaved').textContent = formatTime(latestStats.timeSaved);
+            document.getElementById('conversionRate').textContent = latestStats.conversionRate.toFixed(2) + ' %';
+            document.getElementById('imagesConverted').textContent = latestStats.countConverted;
+            document.getElementById('imagesOriginal').textContent = latestStats.countOriginal;
+            document.getElementById('totalImages').textContent = latestStats.totalImages;
+            updateScheduled = false;
+        }
+
+        function updateChart(startIndex) {
+            const endIndex = startIndex + windowSize;
+            chartData.labels = fullLabels.slice(startIndex, endIndex);
+            chartData.datasets[0].data = fullDataOriginal.slice(startIndex, endIndex);
+            chartData.datasets[1].data = fullDataConverted.slice(startIndex, endIndex);
+            chartData.datasets[2].data = fullDataSaved.slice(startIndex, endIndex);
+            document.getElementById('rangeInfo').textContent = `Showing data ${startIndex + 1} to ${Math.min(endIndex, fullLabels.length)}`;
+            impactChart.update();
+        }
+
+        const slider = document.getElementById('chartRange');
+        slider.addEventListener('input', (e) => {
+            updateChart(parseInt(e.target.value));
+        });
+
+        const socket = io();
+        socket.on('stats', (stats) => {
+            latestStats = stats;
+            if (!updateScheduled) {
+                updateScheduled = true;
+                setTimeout(updateDashboard, 500);
+            }
+        });
+    </script>
+</body>
+
+</html>
