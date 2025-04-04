@@ -33,11 +33,15 @@
             color: #666;
         }
 
-        .group {
+        .group,
+        .conversion-group,
+        .user-group {
             margin-bottom: 30px;
         }
 
-        .group h2 {
+        .group h2,
+        .conversion-group h2,
+        .user-group h2 {
             text-align: center;
             color: #007bff;
             margin-bottom: 20px;
@@ -132,17 +136,6 @@
             margin-top: 10px;
         }
 
-        /* New group for conversion statistics */
-        .conversion-group {
-            margin-bottom: 30px;
-        }
-
-        .conversion-group h2 {
-            text-align: center;
-            color: #007bff;
-            margin-bottom: 20px;
-        }
-
         @media (max-width: 768px) {
             .card-container {
                 flex-direction: column;
@@ -155,39 +148,52 @@
 <body>
     <header>
         <h1>CDN Impact Dashboard</h1>
-        <div class="subheader">Real-time performance & sustainability metrics</div>
+        <div class="subheader">Real-time performance, energy, and user metrics</div>
     </header>
 
-    <!-- Group 1: Conversion Statistics -->
+    <!-- Group 1: User Statistics -->
+    <div class="user-group">
+        <h2>User Statistics</h2>
+        <div class="card-container">
+            <div class="card">
+                <h3>
+                    Unique Users
+                    <span class="info-icon" data-tooltip="Total distinct users (by IP) using the extension.">ℹ️</span>
+                </h3>
+                <p id="uniqueUsers">0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Group 2: Conversion Statistics -->
     <div class="conversion-group">
         <h2>Conversion Statistics</h2>
         <div class="card-container">
             <div class="card">
                 <h3>
                     Total Images
-                    <span class="info-icon"
-                        data-tooltip="Total number of images processed (converted + not converted).">ℹ️</span>
+                    <span class="info-icon" data-tooltip="Total images processed (converted + not converted).">ℹ️</span>
                 </h3>
                 <p id="totalImages">0</p>
             </div>
             <div class="card">
                 <h3>
                     Images Converted (WebP)
-                    <span class="info-icon" data-tooltip="Number of images successfully converted to WebP.">ℹ️</span>
+                    <span class="info-icon" data-tooltip="Images successfully converted to WebP.">ℹ️</span>
                 </h3>
                 <p id="imagesConverted">0</p>
             </div>
             <div class="card">
                 <h3>
                     Images Not Converted (Original)
-                    <span class="info-icon" data-tooltip="Number of images served in original format.">ℹ️</span>
+                    <span class="info-icon" data-tooltip="Images served in original format.">ℹ️</span>
                 </h3>
                 <p id="imagesOriginal">0</p>
             </div>
         </div>
     </div>
 
-    <!-- Group 2: Data Throughput -->
+    <!-- Group 3: Data Throughput -->
     <div class="group">
         <h2>Data Throughput</h2>
         <div class="card-container">
@@ -215,14 +221,14 @@
         </div>
     </div>
 
-    <!-- Group 3: Energy Impact -->
+    <!-- Group 4: Energy Impact -->
     <div class="group">
         <h2>Energy Impact</h2>
         <div class="card-container">
             <div class="card">
                 <h3>
                     Energy Saved
-                    <span class="info-icon" data-tooltip="Estimated energy saved in Joules (raw value).">ℹ️</span>
+                    <span class="info-icon" data-tooltip="Estimated energy saved (Joules).">ℹ️</span>
                 </h3>
                 <p id="energySaved">0</p>
             </div>
@@ -252,14 +258,14 @@
         </div>
     </div>
 
-    <!-- Group 4: Performance -->
+    <!-- Group 5: Performance -->
     <div class="group">
         <h2>Performance</h2>
         <div class="card-container">
             <div class="card">
                 <h3>
                     Time Saved
-                    <span class="info-icon" data-tooltip="Estimated time saved in data transfer (seconds).">ℹ️</span>
+                    <span class="info-icon" data-tooltip="Estimated time saved (seconds).">ℹ️</span>
                 </h3>
                 <p id="timeSaved">0</p>
             </div>
@@ -274,6 +280,7 @@
         </div>
     </div>
 
+    <!-- Group 6: Chart -->
     <div class="chart-container">
         <canvas id="impactChart" width="800" height="400"></canvas>
     </div>
@@ -300,7 +307,7 @@
                     Processing, Storage, and Transport</em>,
                 Proceedings of the IEEE, vol. 99, no. 1, pp. 149–167, DOI: <a
                     href="https://doi.org/10.1109/JPROC.2011.2100192" target="_blank">10.1109/JPROC.2011.2100192</a>
-                (Table II, pp. 156–157).
+                (Table II, pp. 156-157).
             </li>
             <li>
                 Network throughput assumption: Average download speeds of ~10 Mbps (~1.25e6 bytes/sec) as reported by
@@ -390,7 +397,7 @@
             }
         });
 
-        // Full data storage.
+        // Full data storage for the chart history.
         const fullLabels = [];
         const fullDataOriginal = [];
         const fullDataConverted = [];
@@ -427,6 +434,7 @@
             document.getElementById('imagesConverted').textContent = latestStats.countConverted;
             document.getElementById('imagesOriginal').textContent = latestStats.countOriginal;
             document.getElementById('totalImages').textContent = latestStats.totalImages;
+            document.getElementById('uniqueUsers').textContent = latestStats.uniqueUsers;
             updateScheduled = false;
         }
 
@@ -446,6 +454,25 @@
         });
 
         const socket = io();
+        // Receive the initial history from the server.
+        socket.on('initHistory', (historyArray) => {
+            // Rebuild full data arrays from history.
+            historyArray.forEach(record => {
+                const time = new Date(record.timestamp).toLocaleTimeString();
+                fullLabels.push(time);
+                fullDataOriginal.push(record.totalOriginalBytes);
+                fullDataConverted.push(record.totalConvertedBytes);
+                fullDataSaved.push(record.bytesSaved);
+            });
+            // Update the chart to show the latest window.
+            const slider = document.getElementById('chartRange');
+            slider.max = Math.max(0, fullLabels.length - windowSize);
+            if (document.getElementById('autoScroll').checked) {
+                slider.value = slider.max;
+                updateChart(parseInt(slider.value));
+            }
+        });
+
         socket.on('stats', (stats) => {
             latestStats = stats;
             if (!updateScheduled) {

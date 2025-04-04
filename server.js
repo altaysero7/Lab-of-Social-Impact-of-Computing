@@ -9,7 +9,9 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
 const statsFile = __dirname + '/stats.json';
+const historyFile = __dirname + '/history.json';
 
 const app = express();
 const server = http.createServer(app);
@@ -21,6 +23,7 @@ let totalConvertedBytes = 0;
 let totalBytesSaved = 0;
 let countConverted = 0; // images converted to WebP
 let countOriginal = 0;  // images served in original format
+let userStats = {};     // maps user identifier (IP) to number of images processed
 
 if (existsSync(statsFile)) {
     try {
@@ -30,32 +33,70 @@ if (existsSync(statsFile)) {
         totalBytesSaved = saved.totalBytesSaved || 0;
         countConverted = saved.countConverted || 0;
         countOriginal = saved.countOriginal || 0;
+        userStats = saved.userStats || {};
         console.log('Loaded previous stats from file.');
     } catch (e) {
         console.error('Error loading stats file, starting from zero:', e);
     }
 }
 
-/* 
-   Constants for additional metrics:
+// Global history array for time-series data.
+let history = [];
+if (existsSync(historyFile)) {
+    try {
+        history = JSON.parse(readFileSync(historyFile, 'utf-8'));
+        console.log('Loaded previous history from file.');
+    } catch (e) {
+        console.error('Error loading history file, starting with empty history:', e);
+    }
+}
 
-   energyFactor: Based on Baliga et al. (2011), Table II (pp. 156–157) of 
-   "Green Cloud Computing: Balancing Energy in Processing, Storage, and Transport"
-   (Proceedings of the IEEE, vol. 99, no. 1, pp. 149–167, DOI:10.1109/JPROC.2011.2100192),
-   the estimated energy cost for data transport is in the range of 1.0×10⁻⁶ to 2.0×10⁻⁶ Joules per byte.
-   We adopt an average value of 1.6×10⁻⁶ Joules per byte.
-*/
-const energyFactor = 1.6e-6; // Joules per byte (Baliga et al., 2011, Table II, pp. 156–157)
+/*
+    Constants for additional metrics:
 
-/* 
-   networkThroughput: According to broadband speed statistics from Speedtest.net
-   (https://www.speedtest.net/about), average download speeds are around 10 Mbps,
-   which corresponds to roughly 1.25×10⁶ bytes per second.
+    energyFactor: Based on Baliga et al. (2011), Table II (pp. 156–157) of
+    "Green Cloud Computing: Balancing Energy in Processing, Storage, and Transport"
+    (DOI:10.1109/JPROC.2011.2100192), the estimated energy cost for data transport is in the
+    range of 1.0×10⁻⁶ to 2.0×10⁻⁶ Joules per byte. We adopt an average value of 1.6×10⁻⁶ Joules per byte.
 */
-const networkThroughput = 1.25e6; // bytes per second (~10 Mbps)
+const energyFactor = 1.6e-6; // Joules per byte
+
+/*
+    networkThroughput: According to broadband speed statistics from Speedtest.net,
+    average download speeds are around 10 Mbps (~1.25e6 bytes/sec).
+*/
+const networkThroughput = 1.25e6; // bytes per second
+
+// Emit current stats and history to newly connected clients.
+io.on('connection', (socket) => {
+    const energySaved = totalBytesSaved * energyFactor;
+    const timeSaved = totalBytesSaved / networkThroughput;
+    const conversionRate = totalOriginalBytes > 0
+        ? (totalBytesSaved / totalOriginalBytes) * 100
+        : 0;
+    const totalImages = countConverted + countOriginal;
+    const uniqueUsers = Object.keys(userStats).length;
+
+    // Emit current stats.
+    socket.emit('stats', {
+        totalOriginalBytes,
+        totalConvertedBytes,
+        bytesSaved: totalBytesSaved,
+        energySaved,
+        timeSaved,
+        conversionRate,
+        countConverted,
+        countOriginal,
+        totalImages,
+        uniqueUsers
+    });
+
+    // Emit historical data.
+    socket.emit('initHistory', history);
+});
 
 app.get('/convert', async (req, res) => {
-    // Reassemble the original image URL from the query parameters.
+    // Reassemble the original image URL.
     let imageUrl = req.query.img;
     if (!imageUrl) {
         return res.status(400).send('Missing "img" query parameter.');
@@ -69,6 +110,10 @@ app.get('/convert', async (req, res) => {
     }
 
     try {
+        // Identify the user using IP (or x-forwarded-for header if behind a proxy).
+        const userIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
+        userStats[userIP] = (userStats[userIP] || 0) + 1;
+
         // Fetch the original image.
         const response = await fetch(imageUrl);
         const originalContentType = response.headers.get('content-type') || 'application/octet-stream';
@@ -84,7 +129,6 @@ app.get('/convert', async (req, res) => {
             const convertedImageBuffer = await sharp(imageBuffer)
                 .webp({ quality: 80 })
                 .toBuffer();
-            // Only use conversion if it produces a smaller file.
             if (convertedImageBuffer.length < originalBytes) {
                 servedBuffer = convertedImageBuffer;
                 servedContentType = 'image/webp';
@@ -107,23 +151,35 @@ app.get('/convert', async (req, res) => {
             console.log(`Fallback: served original image from ${imageUrl}`);
         }
 
-        // Calculate metrics.
-        const bytesSaved = totalBytesSaved; // Always non-negative.
-        console.log(`Bytes saved: ${bytesSaved}`);
-        const energySaved = bytesSaved * energyFactor; // in Joules.
-        const timeSaved = bytesSaved / networkThroughput; // in seconds.
-        const conversionRate = totalOriginalBytes > 0
-            ? (bytesSaved / totalOriginalBytes) * 100
-            : 0;
+        const bytesSaved = totalBytesSaved;
+        const energySaved = bytesSaved * energyFactor;
+        const timeSaved = bytesSaved / networkThroughput;
+        const conversionRate = totalOriginalBytes > 0 ? (bytesSaved / totalOriginalBytes) * 100 : 0;
         const totalImages = countConverted + countOriginal;
+        const uniqueUsers = Object.keys(userStats).length;
 
-        // Persist stats to file.
+        // Record a new history entry.
+        const record = {
+            timestamp: Date.now(),
+            totalOriginalBytes,
+            totalConvertedBytes,
+            bytesSaved: totalBytesSaved
+        };
+        history.push(record);
+        try {
+            writeFileSync(historyFile, JSON.stringify(history));
+        } catch (e) {
+            console.error('Error writing history file:', e);
+        }
+
+        // Persist overall stats.
         const statsToSave = {
             totalOriginalBytes,
             totalConvertedBytes,
             totalBytesSaved,
             countConverted,
-            countOriginal
+            countOriginal,
+            userStats
         };
         try {
             writeFileSync(statsFile, JSON.stringify(statsToSave));
@@ -131,17 +187,18 @@ app.get('/convert', async (req, res) => {
             console.error('Error writing stats file:', e);
         }
 
-        // Emit updated statistics.
+        // Emit updated stats.
         io.emit('stats', {
             totalOriginalBytes,
             totalConvertedBytes,
-            bytesSaved,
+            bytesSaved: totalBytesSaved,
             energySaved,
             timeSaved,
             conversionRate,
             countConverted,
             countOriginal,
-            totalImages
+            totalImages,
+            uniqueUsers
         });
 
         res.set('Access-Control-Allow-Origin', '*');
