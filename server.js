@@ -16,6 +16,9 @@ const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server);
 
+// Define the project start date as 04/04/2025.
+const projectStartDate = new Date('2025-04-04T00:00:00Z');
+
 // Global statistics – try to load previous stats if available.
 let totalOriginalBytes = 0;
 let totalConvertedBytes = 0;
@@ -85,6 +88,8 @@ const networkThroughput = 1.25e6; // bytes per second
 
 // When a new client connects, immediately emit current stats and history.
 io.on('connection', (socket) => {
+    const now = new Date();
+    const daysRunning = Math.floor((now - projectStartDate) / (1000 * 60 * 60 * 24));
     const energySaved = totalBytesSaved * energyFactor;
     const timeSaved = totalBytesSaved / networkThroughput;
     const conversionRate = totalOriginalBytes > 0 ? (totalBytesSaved / totalOriginalBytes) * 100 : 0;
@@ -102,7 +107,9 @@ io.on('connection', (socket) => {
         countConverted,
         countOriginal,
         totalImages,
-        uniqueUsers
+        uniqueUsers,
+        projectStartDate: projectStartDate.toISOString(),
+        daysRunning
     });
 
     // Emit historical data.
@@ -200,7 +207,10 @@ app.get('/convert', async (req, res) => {
             console.error('Error writing stats file:', e);
         }
 
-        // Emit updated stats.
+        const now = new Date();
+        const daysRunning = Math.floor((now - projectStartDate) / (1000 * 60 * 60 * 24));
+
+        // Emit updated stats
         io.emit('stats', {
             totalOriginalBytes,
             totalConvertedBytes,
@@ -211,7 +221,9 @@ app.get('/convert', async (req, res) => {
             countConverted,
             countOriginal,
             totalImages,
-            uniqueUsers
+            uniqueUsers,
+            projectStartDate: projectStartDate.toISOString(),
+            daysRunning
         });
 
         res.set('Access-Control-Allow-Origin', '*');

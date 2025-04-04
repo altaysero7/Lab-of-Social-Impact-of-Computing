@@ -278,6 +278,17 @@
         </div>
     </div>
 
+    <!-- Project Duration -->
+    <div class="group">
+        <h2>Project Duration</h2>
+        <div class="card-container">
+            <div class="card">
+                <h3>Project Running</h3>
+                <p id="projectDuration">Calculating...</p>
+            </div>
+        </div>
+    </div>
+
     <!-- Chart Section -->
     <div class="chart-container">
         <canvas id="impactChart"></canvas>
@@ -488,6 +499,14 @@
             document.getElementById('imagesOriginal').textContent = latestStats.countOriginal;
             document.getElementById('totalImages').textContent = latestStats.totalImages;
             document.getElementById('uniqueUsers').textContent = latestStats.uniqueUsers;
+
+            // Update project duration info.
+            if (latestStats.projectStartDate && latestStats.daysRunning !== undefined) {
+                const startDate = new Date(latestStats.projectStartDate);
+                document.getElementById('projectDuration').textContent =
+                    `This project started on ${startDate.toLocaleDateString()} and is running for ${latestStats.daysRunning} days.`;
+            }
+
             updateScheduled = false;
         }
 
