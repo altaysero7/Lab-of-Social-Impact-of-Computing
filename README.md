@@ -1,68 +1,42 @@
 # Sustainable Image Optimization with CDN & Browser Extension
 
-A system that detects and optimizes unnecessarily heavy images by redirecting them through a CDN server, converting them to lighter formats like WebP, and providing real-time impact visualization. The project consists of a browser extension, a CDN server, and a dashboard to track the environmental and performance benefits. This project is done for a course named Lab-of-Social-Impact-of-Computing in Trento university, Italy.
+A system that detects and optimizes unnecessarily heavy images by redirecting them through a CDN server, converting them to lighter formats like WebP, and providing real‑time impact visualization. The project consists of a browser extension, a CDN server, and a dashboard to track environmental and performance benefits. This project was developed as part of the Lab of Social Impact of Computing course at Trento University, Italy.
+
+---
 
 ## 🌍 Project Overview
 
-Many websites serve images in outdated or excessively high-quality formats, leading to unnecessary data transfer, higher energy consumption, and longer loading times. This system solves that by:
+Many websites serve images in outdated or excessively high‑quality formats, leading to unnecessary data transfer, increased energy consumption, and slower load times. This system addresses these issues by:
 
-* Intercepting image requests via a browser extension
+- **Intercepting image requests** via a browser extension that dynamically injects a unique, anonymous client ID.
+- **Redirecting images** through a CDN server that optimizes them.
+- **Converting images** into more efficient formats (e.g., WebP) only when the conversion produces smaller file sizes.
+- **Persisting and tracking statistics** over time (including per‑user usage) to evaluate data savings and overall sustainability impact.
+- **Visualizing real‑time insights** in a dashboard with human‑readable formats (e.g., bytes in KB/MB, energy in kJ/MJ, and time in minutes/hours).
 
-* Redirecting images through a CDN that optimizes them
-
-* Converting them into more efficient formats like WebP
-
-* Providing real-time insights into data savings and sustainability impact
+---
 
 ## 🛠️ Technologies Used
 
-* CDN Server: Express.js, Sharp, Socket.IO, Fetch API
+- **CDN Server:**
+  Express.js, Sharp, Socket.IO, Fetch API
+  *(Persists overall stats and a time-series history to JSON files for moderate, single‑instance usage. For production, a database or cloud storage service is recommended.)*
 
-* Browser Extension: WebExtensions API (Manifest v3), Declarative Net Request
+- **Browser Extension:**
+  WebExtensions API (Manifest V3), Declarative Net Request, chrome.storage
+  *(Generates a random anonymous client ID to track unique usage while preserving privacy.)*
 
-* Dashboard: Chart.js, JavaScript, HTML, CSS
+- **Dashboard:**
+  Chart.js, JavaScript, HTML, CSS
+  *(Displays key metrics with human‑readable formatting and a slider to navigate historical data.)*
+
+---
 
 ## ⚙️ Installation & Setup
 
 ### 1️⃣ Set Up the CDN Server
 
-1. Clone the repository
-
-- git clone https://github.com/yourusername/sustainable-image-optimization.git
-cd sustainable-image-optimization/cdn-server
-
-2. Install dependencies
-
-- npm install
-
-3. Run the CDN server
-
-- node server.js
-
-4. Access the dashboard at http://localhost:3000/dashboard
-
-### 2️⃣ Install the Browser Extension
-
-1. Open Chrome (or any Chromium-based browser).
-
-2. Navigate to chrome://extensions/.
-
-3. Enable Developer mode (top-right corner).
-
-4. Click Load Unpacked and select the browser-extension folder.
-
-5. The extension will now redirect image requests to the CDN!
-
-### 📊 How It Works
-
-1. The browser extension intercepts image requests and redirects them to the CDN server.
-
-2. The CDN server fetches the image, converts it to WebP (or another optimized format), and serves it.
-
-3. The dashboard visualizes key performance metrics, including:
-
-* Total bytes saved
-
-* Energy saved (in Joules)
-
-* Equivalent sustainability impact (e.g., LED bulb runtime, smartphone charges)
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/yourusername/sustainable-image-optimization.git
+   cd sustainable-image-optimization/cdn-server
