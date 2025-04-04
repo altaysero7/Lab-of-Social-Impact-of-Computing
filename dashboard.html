@@ -158,7 +158,7 @@
             <div class="card">
                 <h3>
                     Unique Users
-                    <span class="info-icon" data-tooltip="Total distinct users (by IP) using the extension.">ℹ️</span>
+                    <span class="info-icon" data-tooltip="Total distinct client IDs using the extension.">ℹ️</span>
                 </h3>
                 <p id="uniqueUsers">0</p>
             </div>
@@ -456,7 +456,6 @@
         const socket = io();
         // Receive the initial history from the server.
         socket.on('initHistory', (historyArray) => {
-            // Rebuild full data arrays from history.
             historyArray.forEach(record => {
                 const time = new Date(record.timestamp).toLocaleTimeString();
                 fullLabels.push(time);
@@ -464,7 +463,6 @@
                 fullDataConverted.push(record.totalConvertedBytes);
                 fullDataSaved.push(record.bytesSaved);
             });
-            // Update the chart to show the latest window.
             const slider = document.getElementById('chartRange');
             slider.max = Math.max(0, fullLabels.length - windowSize);
             if (document.getElementById('autoScroll').checked) {

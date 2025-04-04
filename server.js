@@ -9,7 +9,6 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
 const statsFile = __dirname + '/stats.json';
 const historyFile = __dirname + '/history.json';
 
@@ -17,13 +16,13 @@ const app = express();
 const server = http.createServer(app);
 const io = new SocketIOServer(server);
 
-// Global statistics – try to load previous stats from file if it exists.
+// Global statistics – try to load previous stats if available.
 let totalOriginalBytes = 0;
 let totalConvertedBytes = 0;
 let totalBytesSaved = 0;
-let countConverted = 0; // images converted to WebP
-let countOriginal = 0;  // images served in original format
-let userStats = {};     // maps user identifier (IP) to number of images processed
+let countConverted = 0;
+let countOriginal = 0;
+let userStats = {};  // maps clientId to number of images processed
 
 if (existsSync(statsFile)) {
     try {
@@ -40,7 +39,6 @@ if (existsSync(statsFile)) {
     }
 }
 
-// Global history array for time-series data.
 let history = [];
 if (existsSync(historyFile)) {
     try {
@@ -67,13 +65,11 @@ const energyFactor = 1.6e-6; // Joules per byte
 */
 const networkThroughput = 1.25e6; // bytes per second
 
-// Emit current stats and history to newly connected clients.
+// When a new client connects, immediately emit current stats and history.
 io.on('connection', (socket) => {
     const energySaved = totalBytesSaved * energyFactor;
     const timeSaved = totalBytesSaved / networkThroughput;
-    const conversionRate = totalOriginalBytes > 0
-        ? (totalBytesSaved / totalOriginalBytes) * 100
-        : 0;
+    const conversionRate = totalOriginalBytes > 0 ? (totalBytesSaved / totalOriginalBytes) * 100 : 0;
     const totalImages = countConverted + countOriginal;
     const uniqueUsers = Object.keys(userStats).length;
 
@@ -110,9 +106,9 @@ app.get('/convert', async (req, res) => {
     }
 
     try {
-        // Identify the user using IP (or x-forwarded-for header if behind a proxy).
-        const userIP = req.headers['x-forwarded-for'] || req.connection.remoteAddress || req.ip;
-        userStats[userIP] = (userStats[userIP] || 0) + 1;
+        // Use clientId from query if available.
+        const clientId = req.query.clientId || 'anonymous';
+        userStats[clientId] = (userStats[clientId] || 0) + 1;
 
         // Fetch the original image.
         const response = await fetch(imageUrl);
@@ -141,14 +137,14 @@ app.get('/convert', async (req, res) => {
                 totalConvertedBytes += originalBytes;
                 countOriginal++;
             }
-            console.log(`Processed image from ${imageUrl}.`);
+            console.log(`Processed image from ${imageUrl} for client ${clientId}.`);
         } catch (convErr) {
             console.error('Error converting image, serving original image:', convErr);
             servedBuffer = imageBuffer;
             servedContentType = originalContentType;
             totalConvertedBytes += originalBytes;
             countOriginal++;
-            console.log(`Fallback: served original image from ${imageUrl}`);
+            console.log(`Fallback: served original image from ${imageUrl} for client ${clientId}`);
         }
 
         const bytesSaved = totalBytesSaved;
@@ -172,7 +168,6 @@ app.get('/convert', async (req, res) => {
             console.error('Error writing history file:', e);
         }
 
-        // Persist overall stats.
         const statsToSave = {
             totalOriginalBytes,
             totalConvertedBytes,
