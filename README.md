@@ -6,33 +6,31 @@ A system designed to detect and optimize unnecessarily large images by redirecti
 
 Many websites serve images in outdated or excessively high-quality formats, resulting in unnecessary data transfer, increased energy consumption, and slower page loads. This system addresses these issues through:
 
-# ✅ Intercepting Image Requests
+### ✅ Intercepting Image Requests
 
 The browser extension intercepts image requests using the Declarative Net Request API (Manifest V3).
 
 It dynamically injects a unique, anonymized client ID to track usage in a privacy-friendly manner.
 
-# ✅ Optimizing Images via CDN
+### ✅ Optimizing Images via CDN
 
 The CDN server, built with Express.js, Sharp, Socket.IO, and Node‑Fetch, fetches the original images.
 
 It converts images to efficient formats (e.g., WebP) and serves the converted image only if it significantly reduces file size. Otherwise, it serves the original image.
 
-# ✅ Real-Time Dashboard
+### ✅ Real-Time Dashboard
 
 A dashboard created with Chart.js, HTML, CSS, and JavaScript visualizes metrics such as:
 
-Total bytes saved
+- Total bytes saved
 
-Energy savings (in Joules)
+- Energy savings (in Joules)
 
-Sustainability equivalents (e.g., LED bulb runtime, smartphone charges, laptop runtime)
+- Sustainability equivalents (e.g., LED bulb runtime, smartphone charges, laptop runtime)
 
-Performance improvements
+- Performance improvements
 
-User statistics (unique users and images processed per user)
-
-# ✅ Persistent Statistics
+### ✅ Persistent Statistics
 
 Key statistics and historical data are persisted to files on the server.
 
@@ -64,7 +62,7 @@ Note: For multi-instance or long-term production, integrating a database or clou
 
 ## ⚙️ Installation & Setup
 
-# 1️⃣ Set Up the CDN Server
+### 1️⃣ Set Up the CDN Server
 
 - Clone the repository from GitHub.
 
@@ -76,7 +74,7 @@ Note: For multi-instance or long-term production, integrating a database or clou
 
 - Access the dashboard at: http://localhost:3000/dashboard
 
-# 2️⃣ Install the Browser Extension
+### 2️⃣ Install the Browser Extension
 
 - Open Chrome (or any Chromium-based browser).
 
@@ -90,31 +88,31 @@ Note: For multi-instance or long-term production, integrating a database or clou
 
 ## 📊 How It Works
 
-# 🔄 Image Interception & Redirection
+### 🔄 Image Interception & Redirection
 
 The browser extension intercepts image requests and redirects them to the CDN server, embedding a dynamic, anonymous client ID.
 
-# ⚡ Image Optimization
+### ⚡ Image Optimization
 
 CDN server retrieves the original images, converts them to WebP if beneficial, and serves the optimized images—saving bandwidth and reducing energy use.
 
-# 📈 Statistics & History
+### 📈 Statistics & History
 
 The server records:
 
-Original bytes vs. converted bytes
+- Original bytes vs. converted bytes
 
-Energy savings (in Joules)
+- Energy savings (in Joules)
 
-Equivalents like LED bulb usage, smartphone charges, laptop runtime
+- Equivalents like LED bulb usage, smartphone charges, laptop runtime
 
-Performance metrics (time savings, conversion rate)
+- Performance metrics (time savings, conversion rate)
 
-Anonymous per-user metrics
+- Anonymous per-user metrics
 
-Historical data for trend analysis
+- Historical data for trend analysis
 
-# 📉 Dashboard Visualization
+### 📉 Dashboard Visualization
 
 Provides real-time visualization of metrics with clear, user-friendly formatting.
 
