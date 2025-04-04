@@ -35,17 +35,9 @@
 
         .group,
         .conversion-group,
-        .user-group {
-            margin-bottom: 30px;
-        }
 
         .group h2,
         .conversion-group h2,
-        .user-group h2 {
-            text-align: center;
-            color: #007bff;
-            margin-bottom: 20px;
-        }
 
         .card-container {
             display: flex;
@@ -151,9 +143,9 @@
         <div class="subheader">Real-time performance, energy, and user metrics</div>
     </header>
 
-    <!-- Group 1: User Statistics -->
-    <div class="user-group">
-        <h2>User Statistics</h2>
+    <!-- Group 1: Conversion Statistics -->
+    <div class="conversion-group">
+        <h2>Conversion Statistics</h2>
         <div class="card-container">
             <div class="card">
                 <h3>
@@ -162,13 +154,6 @@
                 </h3>
                 <p id="uniqueUsers">0</p>
             </div>
-        </div>
-    </div>
-
-    <!-- Group 2: Conversion Statistics -->
-    <div class="conversion-group">
-        <h2>Conversion Statistics</h2>
-        <div class="card-container">
             <div class="card">
                 <h3>
                     Total Images
@@ -193,7 +178,7 @@
         </div>
     </div>
 
-    <!-- Group 3: Data Throughput -->
+    <!-- Group 2: Data Throughput -->
     <div class="group">
         <h2>Data Throughput</h2>
         <div class="card-container">
@@ -221,7 +206,7 @@
         </div>
     </div>
 
-    <!-- Group 4: Energy Impact -->
+    <!-- Group 3: Energy Impact -->
     <div class="group">
         <h2>Energy Impact</h2>
         <div class="card-container">
@@ -258,7 +243,7 @@
         </div>
     </div>
 
-    <!-- Group 5: Performance -->
+    <!-- Group 4: Performance -->
     <div class="group">
         <h2>Performance</h2>
         <div class="card-container">
@@ -280,7 +265,7 @@
         </div>
     </div>
 
-    <!-- Group 6: Chart -->
+    <!-- Group 5: Chart -->
     <div class="chart-container">
         <canvas id="impactChart" width="800" height="400"></canvas>
     </div>
