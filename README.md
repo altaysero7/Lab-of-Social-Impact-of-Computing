@@ -51,7 +51,7 @@ Many websites serve images in outdated or excessively high‑quality formats, re
   node server.js
   Access the dashboard at http://localhost:3000/dashboard
 - **2️⃣ Install the Browser Extension**
-  - Open Chrome (or any Chromium-based browser).
+  Open Chrome (or any Chromium-based browser).
 
   Navigate to chrome://extensions/.
 
