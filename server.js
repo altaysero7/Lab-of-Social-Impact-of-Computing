@@ -5,51 +5,55 @@ import sharp from 'sharp';
 import fetch from 'node-fetch';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { MongoClient } from 'mongodb';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const statsFile = __dirname + '/stats.json';
-const historyFile = __dirname + '/history.json';
 
-const app = express();
-const server = http.createServer(app);
-const io = new SocketIOServer(server);
+// Define the project start date as 07/04/2025.
+const projectStartDate = new Date('2025-04-07T00:00:00Z');
 
-// Define the project start date as 04/04/2025.
-const projectStartDate = new Date('2025-04-04T00:00:00Z');
+// MongoDB Connection Setup
+const uri = process.env.MONGO_URI || 'mongodb+srv://allUsers:8dM56tILY883uQUJ@cluster0.cokrpzd.mongodb.net/';
+const client = new MongoClient(uri);
+try {
+    await client.connect();
+    console.log('Connected to MongoDB');
+} catch (err) {
+    console.error('MongoDB connection error:', err);
+}
+const db = client.db('cdn_data');
+const statsCollection = db.collection('stats');
+const historyCollection = db.collection('history');
 
-// Global statistics – try to load previous stats if available.
+// Load Global Stats from MongoDB
 let totalOriginalBytes = 0;
 let totalConvertedBytes = 0;
 let totalBytesSaved = 0;
 let countConverted = 0;
 let countOriginal = 0;
-let userStats = {};  // maps clientId to number of images processed
+let userStats = {};
 
-if (existsSync(statsFile)) {
-    try {
-        const saved = JSON.parse(readFileSync(statsFile, 'utf-8'));
-        totalOriginalBytes = saved.totalOriginalBytes || 0;
-        totalConvertedBytes = saved.totalConvertedBytes || 0;
-        totalBytesSaved = saved.totalBytesSaved || 0;
-        countConverted = saved.countConverted || 0;
-        countOriginal = saved.countOriginal || 0;
-        userStats = saved.userStats || {};
-        console.log('Loaded previous stats from file.');
-    } catch (e) {
-        console.error('Error loading stats file, starting from zero:', e);
-    }
+let statsDoc = await statsCollection.findOne({ _id: 'globalStats' });
+if (statsDoc) {
+    totalOriginalBytes = statsDoc.totalOriginalBytes || 0;
+    totalConvertedBytes = statsDoc.totalConvertedBytes || 0;
+    totalBytesSaved = statsDoc.totalBytesSaved || 0;
+    countConverted = statsDoc.countConverted || 0;
+    countOriginal = statsDoc.countOriginal || 0;
+    userStats = statsDoc.userStats || {};
+    console.log('Loaded stats from MongoDB.');
+} else {
+    console.log('No stats found, starting with initial values.');
 }
 
-let history = [];
-if (existsSync(historyFile)) {
-    try {
-        history = JSON.parse(readFileSync(historyFile, 'utf-8'));
-        console.log('Loaded previous history from file.');
-    } catch (e) {
-        console.error('Error loading history file, starting with empty history:', e);
-    }
+// Load History from MongoDB
+let history = await historyCollection.find().sort({ timestamp: 1 }).toArray();
+if (history.length > 0) {
+    console.log('Loaded previous history from MongoDB.');
+} else {
+    history = [];
+    console.log('No history found, starting with empty history.');
 }
 
 /*
@@ -86,7 +90,11 @@ const energyFactor = 1.6e-6; // Joules per byte
 */
 const networkThroughput = 1.25e6; // bytes per second
 
-// When a new client connects, immediately emit current stats and history.
+const app = express();
+const server = http.createServer(app);
+const io = new SocketIOServer(server);
+
+// Socket.IO connection – emit current stats and history
 io.on('connection', (socket) => {
     const now = new Date();
     const daysRunning = Math.floor((now - projectStartDate) / (1000 * 60 * 60 * 24));
@@ -96,7 +104,6 @@ io.on('connection', (socket) => {
     const totalImages = countConverted + countOriginal;
     const uniqueUsers = Object.keys(userStats).length;
 
-    // Emit current stats.
     socket.emit('stats', {
         totalOriginalBytes,
         totalConvertedBytes,
@@ -112,10 +119,10 @@ io.on('connection', (socket) => {
         daysRunning
     });
 
-    // Emit historical data.
     socket.emit('initHistory', history);
 });
 
+// /convert endpoint – fetch and possibly convert image, then update MongoDB
 app.get('/convert', async (req, res) => {
     // Reassemble the original image URL.
     let imageUrl = req.query.img;
@@ -131,11 +138,11 @@ app.get('/convert', async (req, res) => {
     }
 
     try {
-        // Use clientId from query if available.
+        // Update user stats based on clientId
         const clientId = req.query.clientId || 'anonymous';
         userStats[clientId] = (userStats[clientId] || 0) + 1;
 
-        // Fetch the original image.
+        // Fetch the original image
         const response = await fetch(imageUrl);
         const originalContentType = response.headers.get('content-type') || 'application/octet-stream';
         const arrayBuffer = await response.arrayBuffer();
@@ -146,7 +153,7 @@ app.get('/convert', async (req, res) => {
         let servedBuffer;
         let servedContentType;
         try {
-            // Attempt conversion to WebP (80% quality).
+            // Attempt conversion to WebP at 80% quality
             const convertedImageBuffer = await sharp(imageBuffer)
                 .webp({ quality: 80 })
                 .toBuffer();
@@ -179,7 +186,7 @@ app.get('/convert', async (req, res) => {
         const totalImages = countConverted + countOriginal;
         const uniqueUsers = Object.keys(userStats).length;
 
-        // Record a new history entry.
+        // Record new history entry and update the history collection
         const record = {
             timestamp: Date.now(),
             totalOriginalBytes,
@@ -187,12 +194,10 @@ app.get('/convert', async (req, res) => {
             bytesSaved: totalBytesSaved
         };
         history.push(record);
-        try {
-            writeFileSync(historyFile, JSON.stringify(history));
-        } catch (e) {
-            console.error('Error writing history file:', e);
-        }
+        historyCollection.insertOne(record)
+            .catch(err => console.error('Error inserting history record into MongoDB:', err));
 
+        // Update global stats document in MongoDB with upsert
         const statsToSave = {
             totalOriginalBytes,
             totalConvertedBytes,
@@ -201,16 +206,16 @@ app.get('/convert', async (req, res) => {
             countOriginal,
             userStats
         };
-        try {
-            writeFileSync(statsFile, JSON.stringify(statsToSave));
-        } catch (e) {
-            console.error('Error writing stats file:', e);
-        }
+        statsCollection.updateOne(
+            { _id: 'globalStats' },
+            { $set: statsToSave },
+            { upsert: true }
+        ).catch(err => console.error('Error updating stats in MongoDB:', err));
 
         const now = new Date();
         const daysRunning = Math.floor((now - projectStartDate) / (1000 * 60 * 60 * 24));
 
-        // Emit updated stats
+        // Emit updated stats to all connected clients via Socket.IO
         io.emit('stats', {
             totalOriginalBytes,
             totalConvertedBytes,
