@@ -232,26 +232,25 @@
             </div>
             <div class="card">
                 <h3>
-                    LED Bulb Equivalent
-                    <span class="info-icon" data-tooltip="Equivalent runtime for a 10W LED (~36,000 J/hr).">ℹ️</span>
+                    LED Indicator
+                    <span class="info-icon" data-tooltip="Runtime for a small 1 W LED (1 J/s).">ℹ️</span>
                 </h3>
-                <p id="ledEquivalent">-</p>
+                <p id="ledIndicator">-</p>
             </div>
             <div class="card">
                 <h3>
-                    Smartphone Charges
-                    <span class="info-icon"
-                        data-tooltip="Equivalent full smartphone charges (~11 Wh per charge, ~39,600 J).">ℹ️</span>
+                    Stir Tea
+                    <span class="info-icon" data-tooltip="Runtime for a 5 W stirrer (5 J/s).">ℹ️</span>
                 </h3>
-                <p id="smartphoneEquivalent">-</p>
+                <p id="teaStir">-</p>
             </div>
             <div class="card">
                 <h3>
-                    Laptop Runtime
+                    Phone Charge
                     <span class="info-icon"
-                        data-tooltip="Equivalent runtime for a 50W laptop (~180,000 J/hr).">ℹ️</span>
+                        data-tooltip="Percent of a full smartphone charge (11 Wh ≈39 600 J).">ℹ️</span>
                 </h3>
-                <p id="laptopEquivalent">-</p>
+                <p id="phoneCharges">-</p>
             </div>
         </div>
     </div>
@@ -493,6 +492,10 @@
             document.getElementById('totalConverted').textContent = formatBytes(latestStats.totalConvertedBytes);
             document.getElementById('bytesSaved').textContent = formatBytes(latestStats.bytesSaved);
             document.getElementById('energySaved').textContent = formatJoules(latestStats.energySaved);
+            document.getElementById('ledIndicator').textContent = formatTime(latestStats.ledSeconds);
+            document.getElementById('teaStir').textContent = formatTime(latestStats.stirSeconds);
+            const phonePct = latestStats.phoneCharges * 100;
+            document.getElementById('phoneCharges').textContent = `${phonePct.toFixed(1)} %`;
             document.getElementById('timeSaved').textContent = formatTime(latestStats.timeSaved);
             document.getElementById('conversionRate').textContent = latestStats.conversionRate.toFixed(2) + ' %';
             document.getElementById('imagesConverted').textContent = latestStats.countConverted;

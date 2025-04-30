@@ -99,6 +99,9 @@ io.on('connection', (socket) => {
     const now = new Date();
     const daysRunning = Math.floor((now - projectStartDate) / (1000 * 60 * 60 * 24));
     const energySaved = totalBytesSaved * energyFactor;
+    const ledSeconds = energySaved;
+    const stirSeconds = energySaved / 5;
+    const phoneCharges = energySaved / 39600;
     const timeSaved = totalBytesSaved / networkThroughput;
     const conversionRate = totalOriginalBytes > 0 ? (totalBytesSaved / totalOriginalBytes) * 100 : 0;
     const totalImages = countConverted + countOriginal;
@@ -116,7 +119,10 @@ io.on('connection', (socket) => {
         totalImages,
         uniqueUsers,
         projectStartDate: projectStartDate.toISOString(),
-        daysRunning
+        daysRunning,
+        ledSeconds,
+        stirSeconds,
+        phoneCharges
     });
 
     socket.emit('initHistory', history);
@@ -181,6 +187,9 @@ app.get('/convert', async (req, res) => {
 
         const bytesSaved = totalBytesSaved;
         const energySaved = bytesSaved * energyFactor;
+        const ledSeconds   = energySaved;
+        const stirSeconds  = energySaved / 5;
+        const phoneCharges = energySaved / 39600;
         const timeSaved = bytesSaved / networkThroughput;
         const conversionRate = totalOriginalBytes > 0 ? (bytesSaved / totalOriginalBytes) * 100 : 0;
         const totalImages = countConverted + countOriginal;
@@ -221,6 +230,9 @@ app.get('/convert', async (req, res) => {
             totalConvertedBytes,
             bytesSaved: totalBytesSaved,
             energySaved,
+            ledSeconds,
+            stirSeconds,
+            phoneCharges,
             timeSaved,
             conversionRate,
             countConverted,
