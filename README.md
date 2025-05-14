@@ -76,6 +76,8 @@ Note: For multi-instance or long-term production, integrating a database or clou
 
 ### 2️⃣ Install the Browser Extension
 
+**Note**: You can find the broswer extension in a different tree located in: https://github.com/altaysero7/Lab-of-Social-Impact-of-Computing/tree/browser-extension
+
 - Open Chrome (or any Chromium-based browser).
 
 - Navigate to: chrome://extensions/
