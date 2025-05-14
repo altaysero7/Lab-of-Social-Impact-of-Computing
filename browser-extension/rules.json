@@ -1,0 +1,21 @@
+[
+    {
+        "id": 1,
+        "priority": 1,
+        "action": {
+            "type": "redirect",
+            "redirect": {
+                "regexSubstitution": "https://sustainable-image-conversion-cdn-server.onrender.com/convert?img=\\0"
+            }
+        },
+        "condition": {
+            "resourceTypes": [
+                "image"
+            ],
+            "regexFilter": "^https?://.*",
+            "excludedRequestDomains": [
+                "sustainable-image-conversion-cdn-server.onrender.com"
+            ]
+        }
+    }
+]
